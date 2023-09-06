@@ -22,7 +22,7 @@ public class ThermostatController : ControllerBase {
     // Vent posts its info and is told whether it should be open or closed
     [HttpPost]
     [Route("UpdateVent")]
-    public bool UpdateVent(VentSummary payload) {
+    public ActionResult<bool> UpdateVent(VentSummary payload) {
         foreach (var vent in Vents) {
             if (vent.Id == payload.Id) {
                 vent.History.Add(new VentData() {
@@ -30,27 +30,27 @@ public class ThermostatController : ControllerBase {
                     Temp = payload.Temp,
                     IsOccupied = payload.IsOccupied
                 });
-                break;
+
+                // Leave everything open if Smart-Vents is disabled
+                if (!Settings.IsEnabled) 
+                    return true;
+
+                // Close if not occupied
+                if (!payload.IsOccupied) 
+                    return false;
+
+                // Close when the room reaches the target temp
+                return payload.Temp <= Settings.TargetTemp;
             }
         }
-
-        // Leave everything open if Smart-Vents is disabled
-        if (!Settings.IsEnabled) 
-            return true;
-
-        // Close if not occupied
-        if (!payload.IsOccupied) 
-            return false;
-
-        // Close when the room reaches the target temp
-        return payload.Temp <= Settings.TargetTemp;
+        return NotFound();
     }
 
     [HttpPost]
     [Route("AddVent")]
-    public void AddVent(VentSummary payload) {
+    public void AddVent(string id) {
         Vents.Add(new Vent() {
-            Id = payload.Id,
+            Id = id,
             History = new List<VentData>()   
         });  
     }
