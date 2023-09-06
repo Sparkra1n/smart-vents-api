@@ -1,6 +1,6 @@
 namespace smart_vents_api.Models;
 
-public class DashboardData
+public class DashboardSettings
 {
     public double TargetTemp { get; set; }
 

@@ -1,5 +1,6 @@
 {
     "appService.preDeployTask": "publish-release",
     "appService.deploySubpath": "bin/Release/net6.0/publish",
-    "appService.defaultWebAppToDeploy": "undefined/subscriptions/8ecb2f63-d3ad-4dff-9524-7e370aa69a33/resourceGroups/smart-vents-api-resource-group/providers/Microsoft.Web/sites/smart-vents-api"
+    "appService.defaultWebAppToDeploy": "undefined/subscriptions/8ecb2f63-d3ad-4dff-9524-7e370aa69a33/resourceGroups/smart-vents-api-resource-group/providers/Microsoft.Web/sites/smart-vents-api",
+    "cmake.configureOnOpen": false
 }
