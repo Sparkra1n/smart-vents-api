@@ -7,64 +7,88 @@ namespace smart_vents_api.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class ThermostatController : ControllerBase {
+public class ThermostatController : ControllerBase 
+{
     private static DashboardSettings Settings = new();
     private static readonly List<Vent> Vents = new();
     private readonly ILogger<ThermostatController> Logger;
-    public ThermostatController(ILogger<ThermostatController> logger) {
+    public ThermostatController(ILogger<ThermostatController> logger) 
+    {
         Logger = logger;
-        Settings = new DashboardSettings() {
+        Settings = new DashboardSettings() 
+        {
             IsEnabled = false,
-            TargetTemp = 25
+            MasterTargetTemp = 25
         };
     }
 
-    // Vent posts its info and is told whether it should be open or closed
     [HttpPost]
-    [Route("UpdateVent")]
-    public ActionResult<bool> UpdateVent(VentSummary payload) {
-        foreach (var vent in Vents) {
-            if (vent.Id == payload.Id) {
-                vent.History.Add(new VentData() {
-                    TimeStamp = DateTime.UtcNow,
-                    Temp = payload.Temp,
-                    IsOccupied = payload.IsOccupied
-                });
-
-                // Leave everything open if Smart-Vents is disabled
-                if (!Settings.IsEnabled) 
-                    return true;
-
-                // Close if not occupied
-                if (!payload.IsOccupied) 
-                    return false;
-
-                // Close when the room reaches the target temp
-                return payload.Temp <= Settings.TargetTemp;
+    [Route("setVentTargetTemp")]
+    public ActionResult SetVentTargetTemp(string id, double targetTemp) 
+    {
+        foreach (var vent in Vents) 
+        {
+            if (vent.Id == id) 
+            {
+                vent.TargetTemp = targetTemp;
+                return Ok();
             }
         }
         return NotFound();
     }
 
+    // Vent posts its info and is told whether it should be open or closed
     [HttpPost]
-    [Route("AddVent")]
-    public void AddVent(string id) {
-        Vents.Add(new Vent() {
+    [Route("updateVent")]
+public ActionResult<bool> UpdateVent(VentSummary payload)
+{
+    var ventToUpdate = Vents.FirstOrDefault(vent => vent.Id == payload.Id);
+
+    if (ventToUpdate == null)
+        return NotFound();
+    
+    ventToUpdate.History.Add(new VentData()
+    {
+        Timestamp = DateTime.UtcNow.ToString("u"),
+        Temp = payload.Temp ?? 0,
+        IsOccupied = payload.IsOccupied ?? false
+    });
+
+    if (!Settings.IsEnabled)
+        return true;
+
+    if (!payload.IsOccupied ?? false)
+        return false;
+
+    return payload.Temp <= ventToUpdate.TargetTemp;
+}
+
+
+    [HttpPost]
+    [Route("addVent")]
+    public void AddVent(string id) 
+    {
+        Vents.Add(new Vent() 
+        {
             Id = id,
+            TargetTemp = 25,
             History = new List<VentData>()   
-        });  
+        });
     }
 
     [HttpPost]
-    [Route("Settings")]
-    public void SetDashboardSettings(DashboardSettings dashboardData) {
+    [Route("settings")]
+    public void SetDashboardSettings(DashboardSettings dashboardData) 
+    {
         Settings = dashboardData;
     }
 
     [HttpGet]
-    [Route("VentHistory")]
-    public ActionResult<List<VentData>> GetVentHistory(string id) {
-        foreach (var vent in Vents) {
+    [Route("ventHistory")]
+    public ActionResult<List<VentData>> GetVentHistory(string id) 
+    {
+        foreach (var vent in Vents) 
+        {
             if (vent.Id == id)
                 return vent.History;
         }
@@ -72,17 +96,31 @@ public class ThermostatController : ControllerBase {
     }
 
     [HttpGet]
-    [Route("VentSummaries")]
-    public string GetVentSummaries() {
+    [Route("ventHistories")]
+    public ActionResult<List<Vent>> GetVentHistories() 
+    {
+        return Vents;
+    }
+
+    [HttpGet]
+    [Route("ventSummaries")]
+    public List<VentSummary> GetVentSummaries() 
+    {
         List<VentSummary> ventSummaries = new();
-        foreach (var vent in Vents) {
-            ventSummaries.Add(new VentSummary() {
+
+        foreach (var vent in Vents) 
+        {
+            var lastHistory = vent.History.LastOrDefault();
+
+            ventSummaries.Add(new VentSummary() 
+            {
                 Id = vent.Id,
-                IsOccupied = vent.History.Last().IsOccupied,
-                Temp = vent.History.Last().Temp
+                TargetTemp = vent.TargetTemp,
+                IsOccupied = lastHistory?.IsOccupied,
+                Temp = lastHistory?.Temp
             });
         }
 
-        return JsonConvert.SerializeObject(ventSummaries, Formatting.Indented);
+        return ventSummaries;
     }
 }
