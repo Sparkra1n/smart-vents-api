@@ -97,9 +97,9 @@ public ActionResult<bool> UpdateVent(VentSummary payload)
 
     [HttpGet]
     [Route("ventHistories")]
-    public ActionResult<List<Vent>> GetVentHistories() 
+    public string GetVentHistories() 
     {
-        return Vents;
+        return JsonConvert.SerializeObject(Vents, Formatting.Indented);
     }
 
     [HttpGet]
