@@ -38,41 +38,12 @@ public class ThermostatController : ControllerBase
         return NotFound();
     }
 
-    // Vent posts its info and is told whether it should be open or closed
-    [HttpPost]
-    [Route("updateVent")]
-    public ActionResult<bool> UpdateVent(VentSummary payload)
-    {
-        var ventToUpdate = Vents.FirstOrDefault(vent => vent.Id == payload.Id);
-
-        if (ventToUpdate == null)
-            return NotFound();
-
-        ventToUpdate.History.Add(new VentData()
-        {
-            Timestamp = DateTime.UtcNow.ToString("u"),
-            Temp = payload.Temp ?? 0,
-            IsOccupied = payload.IsOccupied ?? false
-        });
-
-        if (!Settings.IsEnabled)
-            return true;
-
-        if (!payload.IsOccupied ?? false)
-            return false;
-
-        return payload.Temp <= ventToUpdate.TargetTemp;
-    }
-
-
     [HttpPost]
     [Route("addVent")]
     public ActionResult AddVent(string id)
     {
         if (Vents.Any(vent => vent.Id == id))
-        {
             return BadRequest();
-        }
 
         Vents.Add(new Vent()
         {
@@ -100,6 +71,7 @@ public class ThermostatController : ControllerBase
             if (vent.Id == id)
                 return vent.History;
         }
+        
         return NotFound();
     }
 
@@ -136,5 +108,37 @@ public class ThermostatController : ControllerBase
         }
 
         return ventSummaries;
+    }
+
+        // Vent posts its info and is told whether it should be open or closed
+    [HttpPost]
+    [Route("updateVent")]
+    public ActionResult<VentState> UpdateVent(VentSummary payload)
+    {
+        var ventToUpdate = Vents.FirstOrDefault(vent => vent.Id == payload.Id);
+        if (ventToUpdate == null)
+            return NotFound();
+
+        var timestampRounded = DateTime.UtcNow.AddTicks(-(DateTime.UtcNow.Ticks % TimeSpan.TicksPerMinute)).ToString("u");
+
+        if (ventToUpdate.History.Any(item => timestampRounded == item.Timestamp))
+            return VentState.stay;
+
+        var newVentData = new VentData
+        {
+            Timestamp = timestampRounded,
+            Temp = payload.Temp ?? 0,
+            IsOccupied = payload.IsOccupied ?? false
+        };
+
+        ventToUpdate.History.Add(newVentData);
+
+        if (!Settings.IsEnabled)
+            return VentState.open;
+
+        if (!newVentData.IsOccupied)
+            return VentState.close;
+
+        return payload.Temp <= ventToUpdate.TargetTemp ? VentState.open : VentState.close;
     }
 }

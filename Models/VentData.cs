@@ -1,6 +1,12 @@
 namespace smart_vents_api.Models;
 
-// Basic vent data
+public enum VentState
+{
+    open,
+    close,
+    stay
+}
+
 public class VentData
 {
     public string Timestamp { get; set; }
